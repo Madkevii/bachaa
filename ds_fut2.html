@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DSFUT API Player Pickup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .player-card {
+            display: none;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            width: 300px;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+        }
+        .player-card h2 {
+            margin: 10px 0;
+            font-size: 1.5em;
+        }
+        .player-card p {
+            margin: 5px 0;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>DSFUT API Player Pickup</h1>
+    <form id="apiForm">
+        <label for="partner_id">Partner ID:</label>
+        <input type="text" id="partner_id" required><br><br>
+
+        <label for="secret_key">Secret Key:</label>
+        <input type="password" id="secret_key" required><br><br>
+
+        <label for="console">Console:</label>
+        <select id="console">
+            <option value="ps">PlayStation</option>
+            <option value="cons">Xbox</option>
+            <option value="pc">PC</option>
+        </select><br><br>
+
+        <label for="min_buy">Minimum Buy Price:</label>
+        <input type="number" id="min_buy"><br><br>
+
+        <label for="max_buy">Maximum Buy Price:</label>
+        <input type="number" id="max_buy"><br><br>
+
+        <label for="take_after">Take After (seconds):</label>
+        <input type="number" id="take_after"><br><br>
+
+        <button type="button" onclick="pickPlayer()">Pick Player</button>
+    </form>
+
+    <h3>API Response:</h3>
+    <pre id="responseOutput"></pre>
+
+    <div id="playerCard" class="player-card">
+        <h2 id="playerName">Player Name</h2>
+        <p><strong>Rating:</strong> <span id="playerRating">-</span></p>
+        <p><strong>Position:</strong> <span id="playerPosition">-</span></p>
+        <p><strong>Start Price:</strong> <span id="startPrice">-</span></p>
+        <p><strong>Buy Now Price:</strong> <span id="buyNowPrice">-</span></p>
+        <p><strong>Chemistry Style:</strong> <span id="chemistryStyle">-</span></p>
+        <p><strong>Contracts:</strong> <span id="contracts">-</span></p>
+    </div>
+
+    <script>
+        async function pickPlayer() {
+            // Get input values
+            const partnerId = document.getElementById('partner_id').value;
+            const secretKey = document.getElementById('secret_key').value;
+            const console = document.getElementById('console').value;
+            const minBuy = document.getElementById('min_buy').value;
+            const maxBuy = document.getElementById('max_buy').value;
+            const takeAfter = document.getElementById('take_after').value;
+
+            // Generate timestamp and MD5 signature
+            const timestamp = Math.floor(Date.now() / 1000);
+            const rawSignature = partnerId + secretKey + timestamp;
+            const signature = md5(rawSignature);
+
+            // Construct the API URL with parameters
+            const baseUrl = `https://dsfut.net/api/25/${console}/${partnerId}/${timestamp}/${signature}`;
+            const params = new URLSearchParams({
+                min_buy: minBuy,
+                max_buy: maxBuy,
+                take_after: takeAfter
+            }).toString();
+
+            const url = `${baseUrl}?${params}`;
+
+            try {
+                const response = await fetch(url);
+                const textResponse = await response.text();
+
+                // Parse response as JSON
+                let data;
+                try {
+                    data = JSON.parse(textResponse);
+                } catch (e) {
+                    document.getElementById('responseOutput').textContent = "Invalid JSON response received.";
+                    return;
+                }
+
+                // Display full response or error details
+                if (data.error) {
+                    // Display error message
+                    document.getElementById('responseOutput').textContent = `Error: ${data.error} - ${data.message}`;
+                    document.getElementById('playerCard').style.display = 'none'; // Hide player card on error
+                } else if (data.player) {
+                    // Populate player card with response details
+                    document.getElementById('playerName').textContent = data.player.name;
+                    document.getElementById('playerRating').textContent = data.player.rating;
+                    document.getElementById('playerPosition').textContent = data.player.position;
+                    document.getElementById('startPrice').textContent = data.player.startPrice;
+                    document.getElementById('buyNowPrice').textContent = data.player.buyNowPrice;
+                    document.getElementById('chemistryStyle').textContent = data.player.chemistryStyle;
+                    document.getElementById('contracts').textContent = data.player.contracts;
+
+                    // Display the player card
+                    document.getElementById('playerCard').style.display = 'block';
+                    document.getElementById('responseOutput').textContent = ""; // Clear previous output
+                } else {
+                    // Display general message if no error or player data
+                    document.getElementById('responseOutput').textContent = data.message || "No data received.";
+                    document.getElementById('playerCard').style.display = 'none'; // Hide player card
+                }
+            } catch (error) {
+                document.getElementById('responseOutput').textContent = `Request failed: ${error}`;
+                document.getElementById('playerCard').style.display = 'none'; // Hide player card on error
+            }
+        }
+
+        // Simple MD5 hash function for JavaScript
+        function md5(string) {
+            return CryptoJS.MD5(string).toString();
+        }
+    </script>
+
+    <!-- Include the CryptoJS library for MD5 hashing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</body>
+</html>
