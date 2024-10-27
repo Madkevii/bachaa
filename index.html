@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DSFUT API Player Pickup</title>
+</head>
+<body>
+    <h1>DSFUT API Player Pickup</h1>
+    <form id="apiForm">
+        <label for="partner_id">Partner ID:</label>
+        <input type="text" id="partner_id" required><br><br>
+
+        <label for="secret_key">Secret Key:</label>
+        <input type="password" id="secret_key" required><br><br>
+
+        <label for="console">Console:</label>
+        <select id="console">
+            <option value="ps">PlayStation</option>
+            <option value="cons">Xbox</option>
+            <option value="pc">PC</option>
+        </select><br><br>
+
+        <label for="min_buy">Minimum Buy Price:</label>
+        <input type="number" id="min_buy"><br><br>
+
+        <label for="max_buy">Maximum Buy Price:</label>
+        <input type="number" id="max_buy"><br><br>
+
+        <label for="take_after">Take After (seconds):</label>
+        <input type="number" id="take_after"><br><br>
+
+        <button type="button" onclick="pickPlayer()">Pick Player</button>
+    </form>
+
+    <h3>API Response:</h3>
+    <pre id="responseOutput"></pre>
+
+    <script>
+        async function pickPlayer() {
+            // Get input values
+            const partnerId = document.getElementById('partner_id').value;
+            const secretKey = document.getElementById('secret_key').value;
+            const console = document.getElementById('console').value;
+            const minBuy = document.getElementById('min_buy').value;
+            const maxBuy = document.getElementById('max_buy').value;
+            const takeAfter = document.getElementById('take_after').value;
+
+            // Generate timestamp and MD5 signature
+            const timestamp = Math.floor(Date.now() / 1000);
+            const rawSignature = partnerId + secretKey + timestamp;
+            const signature = md5(rawSignature);
+
+            // Construct the API URL with parameters
+            const baseUrl = `https://dsfut.net/api/25/${console}/${partnerId}/${timestamp}/${signature}`;
+            const params = new URLSearchParams({
+                min_buy: minBuy,
+                max_buy: maxBuy,
+                take_after: takeAfter
+            }).toString();
+
+            const url = `${baseUrl}?${params}`;
+
+            try {
+                const response = await fetch(url);
+                const textResponse = await response.text();
+
+                // Parse response as JSON
+                let data;
+                try {
+                    data = JSON.parse(textResponse);
+                } catch (e) {
+                    document.getElementById('responseOutput').textContent = "Invalid JSON response received.";
+                    return;
+                }
+
+                // Display full response or error details
+                if (data.error) {
+                    // Display error message
+                    document.getElementById('responseOutput').textContent = `Error: ${data.error} - ${data.message}`;
+                } else if (data.player) {
+                    // Display player details if available
+                    document.getElementById('responseOutput').textContent = `Player Picked:\n${JSON.stringify(data.player, null, 2)}`;
+                } else {
+                    // Display general message if no error or player data
+                    document.getElementById('responseOutput').textContent = data.message || "No data received.";
+                }
+            } catch (error) {
+                document.getElementById('responseOutput').textContent = `Request failed: ${error}`;
+            }
+        }
+
+        // Simple MD5 hash function for JavaScript
+        function md5(string) {
+            return CryptoJS.MD5(string).toString();
+        }
+    </script>
+
+    <!-- Include the CryptoJS library for MD5 hashing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</body>
+</html>
